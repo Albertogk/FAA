@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-
+from EstrategiaParticionado import EstrategiaParticionado
 
 class Datos:
 
@@ -10,6 +10,7 @@ class Datos:
         self.datos = pd.read_csv(nombreFichero)
         self.datos = self.datos.to_numpy()
         self.diccionario = []
+        self.estrategia_particionado = EstrategiaParticionado()
 
         aux_set = []
 
@@ -38,3 +39,5 @@ class Datos:
     # TODO: implementar en la practica 1
     def extraeDatos(self, idx):
         pass
+
+
