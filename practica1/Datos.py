@@ -19,10 +19,10 @@ class Datos:
         for linea in self.datos:
             idx = 0
             for atributo in linea:
+
                 if self.nominalAtributos[idx]:
                     aux_set[idx].add(atributo)
-
-                idx += 1
+                    idx += 1
 
         for i in range(len(self.datos[0])):
             self.diccionario.append({item: val for val, item in enumerate(sorted(aux_set[i]))})
