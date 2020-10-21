@@ -109,7 +109,7 @@ class ClasificadorNaiveBayes(Clasificador):
                 n_c2 += 1
 
         idx_atributo = 0
-
+        print(atributos)
         for atributo in atributos:
 
             for valor in atributo:
@@ -159,16 +159,10 @@ class ClasificadorNaiveBayes(Clasificador):
             p1 *= self.n_c1/(self.n_c1 + self.n_c2)
             p2 *= self.n_c2/(self.n_c1 + self.n_c2)
 
-            p1_aux = p1/(p1+p2)
-            p2 = p2/(p1+p2)
-            
-            p1 = p1_aux
-
             if flag == 1:
                 result.append('error')
             else:
 
-                print([p1, p2])
                 if p1 >= p2:
                     result.append(self.atributos[-1][0])
                 else:
