@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-
+import numpy as np
 
 class Clasificador:
     # Clase abstracta
@@ -110,6 +110,7 @@ class ClasificadorNaiveBayes(Clasificador):
 
         idx_atributo = 0
 
+
         for atributo in atributos:
 
             for valor in atributo:
@@ -123,8 +124,8 @@ class ClasificadorNaiveBayes(Clasificador):
                         else:
                             cont_c2 += 1
 
-                a = cont_c1 / n_c1
-                b = cont_c2 / n_c2
+                a = cont_c1/n_c1
+                b = cont_c2/n_c2
 
                 probabilidades[idx_atributo].append((a, b))
 
@@ -145,19 +146,24 @@ class ClasificadorNaiveBayes(Clasificador):
             p1 = 1
             p2 = 1
             flag = 0
+            cont = 0
             for i in range(len(fila)-1):
 
-                try:
+               '''try:
                     idx = self.atributos[i].index(fila[i])
                 except ValueError:
                     flag = 1
-                    break
+                    break'''
 
-                p1 *= self.datos_atributo[i][idx][0]
-                p2 *= self.datos_atributo[i][idx][1]
+               idx = fila[i]
+               p1 *= self.datos_atributo[i][idx][0]
+               p2 *= self.datos_atributo[i][idx][1]
+
+               cont += 1
 
             p1 *= self.n_c1/(self.n_c1 + self.n_c2)
             p2 *= self.n_c2/(self.n_c1 + self.n_c2)
+
 
             p1_aux = p1/(p1+p2)
             p2 = p2/(p1+p2)
