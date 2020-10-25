@@ -74,6 +74,8 @@ class ClasificadorNaiveBayes(Clasificador):
         self.n_clases = 0
         self.numero_atributos = 0
 
+        self.probabilidades = []
+
         self.prediccion = []
 
     def entrenamiento(self, datostrain, atributosDiscretos, diccionario):
