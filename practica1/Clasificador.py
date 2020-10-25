@@ -1,5 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import numpy as np
+from scipy.stats import norm
+
 
 class Clasificador:
     # Clase abstracta
@@ -21,34 +23,41 @@ class Clasificador:
         pass
 
     # Obtiene el numero de aciertos y errores para calcular la tasa de fallo
-    # TODO: implementar
     def error(self, datos, pred):
-        false_c1 = 0
-        false_c2 = 0
+        n_err = 0
 
-        i = 0
-        for fila in datos:
+        for i in range(len(datos)):
+            if datos[i][-1] != pred[i]:
+                n_err += 1
 
-            if fila[-1] != pred[i]:
-                if pred[i] == self.atributos[-1][0]:
-                    false_c1 += 1
-
-                #tener en cuenta que error
-                else:
-                    false_c2 += 1
-            i += 1
-
-        return (false_c1 + false_c2)/len(datos)
+        return n_err/len(datos)
 
     # Realiza una clasificacion utilizando una estrategia de particionado determinada
     # TODO: implementar esta funcion
-    def validacion(self, particionado, dataset, clasificador, seed=None):
+    def validacion(self, particionado, dataset, diccionario, atributosDiscretos, clasificador, seed=None):
         # Creamos las particiones siguiendo la estrategia llamando a particionado.creaParticiones
         # - Para validacion cruzada: en el bucle hasta nv entrenamos el clasificador con la particion de train i
         # y obtenemos el error en la particion de test i
         # - Para validacion simple (hold-out): entrenamos el clasificador con la particion de train
         # y obtenemos el error en la particion test. Otra opcion es repetir la validación simple un número especificado de veces, obteniendo en cada una un error. Finalmente se calcularia la media.
-        pass
+
+        n_datos = len(dataset)
+        particiones = particionado.creaParticiones(n_datos, seed)
+
+        cont = 0
+        error = 0
+        for particion in particiones:
+            datostest = dataset.extraeDatos(particion.indicesTest)
+            datostrain = dataset.extraeDatos(particion.indicesTrain)
+
+            clasificador.entrenamiento(datostrain, atributosDiscretos, diccionario)
+            pred = clasificador.clasifica(datostest, atributosDiscretos, diccionario)
+
+            error += clasificador.error(datostest, pred)
+
+            cont += 1
+
+        return error/cont
 
     ##############################################################################
 
@@ -56,129 +65,163 @@ class Clasificador:
 class ClasificadorNaiveBayes(Clasificador):
 
     def __init__(self):
-        self.datos_atributo = []
-        self.atributos = []
-        self.n_valores = []
-        self.n_c1 = 0
-        self.n_c2 = 0
+        self.ocurrencias = []
+        self.ocurrencias_clase = []
 
-    def obtener_atributos(self, datostrain):
-        aux_set = []
-        n_valores = []
+        self.medias = []
+        self.desv = []
 
-        for _ in datostrain[0]:
-            aux_set.append(set())
+        self.n_clases = 0
+        self.numero_atributos = 0
 
-        for linea in datostrain:
+        self.prediccion = []
 
-            idx = 0
-            for atributo in linea:
-                aux_set[idx].add(atributo)
-                idx += 1
-
-        for i in range(len(aux_set)):
-            n_valores.append(len(aux_set[i]))
-
-        atributos = []
-
-        for i in range(len(aux_set)):
-            atributos.append(sorted(aux_set[i]))
-
-        self.atributos = atributos
-        self.n_valores = n_valores
-
-        return n_valores, atributos
-
-    # TODO: implementar
     def entrenamiento(self, datostrain, atributosDiscretos, diccionario):
 
-        n_valores, atributos = self.obtener_atributos(datostrain)
+        if not datostrain:
+            return
 
-        probabilidades = []
+        n_atributos = len(datostrain[0]) - 1
+        n_clases = len(diccionario[-1])
 
-        for i in range(len(atributos)):
-            probabilidades.append([])
+        ocurrencias = []
 
-        n_c1 = 0
-        n_c2 = 0
+        medias = []
+        desv = []
+
+        # Lista donde se guarda el número de veces que aparece cada clase
+        ocurrencias_clase = [0]*n_clases
+
+        # Inicialuizacion de listas de datos
+        for i in range(n_atributos):
+
+            ocurrencias.append([])
+
+            if atributosDiscretos[i]:
+                # Para atributos discretos se crea una lista de listas donde
+                # se guarda el número de ocurrencias para cada clase:
+                # [a1: [v1: [n_c1, n_c2...], v2: [[n_c1, n_c2...]...], a2: ...]
+                n_valores = len(diccionario[i])
+                for j in range(n_valores):
+                    ocurrencias[i].append([0]*n_clases)
+
+                medias.append([])
+                desv.append([])
+
+            else:
+                # Para atributos continuos se crean dos listas: media y desviacion tipica
+                # Se guarda un valor para cada atributo y clase:
+                # [a1: [media_c1, media_c2...], a2: [media_c1...], ...]
+
+                medias.append([0]*n_clases)
+                desv.append([0]*n_clases)
 
         for fila in datostrain:
-            if fila[-1] == atributos[-1][0]:
-                n_c1 += 1
-            else:
-                n_c2 += 1
 
-        idx_atributo = 0
+            # Se actualiza el número de elementos que contiene cada clase
+            ocurrencias_clase[fila[-1]] += 1
 
-
-        for atributo in atributos:
-
-            for valor in atributo:
-
-                cont_c1 = 0
-                cont_c2 = 0
-                for fila in datostrain:
-                    if fila[idx_atributo] == valor:
-                        if fila[-1] == atributos[-1][0]:
-                            cont_c1 += 1
-                        else:
-                            cont_c2 += 1
-
-                a = cont_c1/n_c1
-                b = cont_c2/n_c2
-
-                probabilidades[idx_atributo].append((a, b))
-
-            idx_atributo += 1
-
-        self.datos_atributo = probabilidades
-        self.n_c1 = n_c1
-        self.n_c2 = n_c2
-
-        return probabilidades, (n_c1, n_c2)
-
-    # TODO: implementar
-    def clasifica(self, datostest, atributosDiscretos, diccionario):
-
-        result = []
-
-        for fila in datostest:
-            p1 = 1
-            p2 = 1
-            flag = 0
-            cont = 0
+            # Para cada atributo:
             for i in range(len(fila)-1):
 
-               '''try:
-                    idx = self.atributos[i].index(fila[i])
-                except ValueError:
-                    flag = 1
-                    break'''
-
-               idx = fila[i]
-               p1 *= self.datos_atributo[i][idx][0]
-               p2 *= self.datos_atributo[i][idx][1]
-
-               cont += 1
-
-            p1 *= self.n_c1/(self.n_c1 + self.n_c2)
-            p2 *= self.n_c2/(self.n_c1 + self.n_c2)
-
-
-            p1_aux = p1/(p1+p2)
-            p2 = p2/(p1+p2)
-            
-            p1 = p1_aux
-
-            if flag == 1:
-                result.append('error')
-            else:
-
-                print([p1, p2])
-                if p1 >= p2:
-                    result.append(self.atributos[-1][0])
+                # Si el atributo es discreto se aumenta en uno la posicion
+                # correspondiente
+                # i : atributo
+                # fila[i] : valor
+                # fila[-1] : clase
+                if atributosDiscretos[i]:
+                    ocurrencias[i][fila[i]][fila[-1]] += 1
                 else:
-                    result.append(self.atributos[-1][1])
+                    # Si es continuo, se suma el valor en el array de medias
+                    medias[i][fila[-1]] += fila[i]
 
 
-        return result
+        # Se calculan las medias usando la suma obtenida y el número de elementos
+        # para cada clase
+        for i in range(len(medias)):
+            if not atributosDiscretos[i]:
+                for j in range(len(medias[i])):
+                    medias[i][j] /= ocurrencias_clase[j]
+
+        # Se calcula la desviacion media
+        for fila in datostrain:
+            for i in range(len(fila)-1):
+                if not atributosDiscretos[i]:
+                    desv[i][fila[-1]] += (fila[i] - medias[i][fila[-1]])**2
+
+        for i in range(len(desv)):
+            if not atributosDiscretos[i]:
+                for j in range(len(desv[i])):
+                    desv[i][j] /= ocurrencias_clase[j]
+                    desv[i][j] = np.sqrt(desv[i][j])
+
+        # Se actualizan los atributos de la clase con datos relevantes
+        self.ocurrencias = ocurrencias
+        self.ocurrencias_clase = ocurrencias_clase
+
+        self.medias = medias
+        self.desv = desv
+
+        self.n_clases = n_clases
+        self.numero_atributos = n_atributos
+
+        return
+
+    def clasifica(self, datostest, atributosDiscretos, diccionario, alpha=1):
+
+        pred = []
+
+        # Inicializacion de la lista que almacenara las probabilidades de cada elemento para cada clase
+        probabilidades = []
+
+        for _ in datostest:
+            probabilidades.append([1]*self.n_clases)
+
+        # Lista que guarda para que atributos será necesario aplicar Laplace
+        laplace = [0]*(len(datostest[0])-1)
+
+        for fila in datostest:
+            for i in range(len(fila)-1):
+                if atributosDiscretos[i]:
+                    for j in range(self.n_clases):
+                        if self.ocurrencias[i][fila[i]][j] == 0:
+                            laplace[i] = alpha
+
+        # Calculo de probabilidades
+        idx_fila = 0
+
+        for fila in datostest:
+            for j in range(self.n_clases):
+                for i in range(len(fila)-1):
+
+                    # Si el atributo es discreto, se calcula la probabilidad utilizando
+                    # "ocurrencias" de entrenamiento
+                    # Con el metodo aproximado de Naive-Bayes
+                    if atributosDiscretos[i]:
+                        n_valores = len(diccionario[i])
+                        probabilidades[idx_fila][j] *= (self.ocurrencias[i][fila[i]][j] + laplace[i])/(self.ocurrencias_clase[j] + laplace[i]*n_valores)
+
+                    # Para atributos continuos se calcula la probabilidad usando la distibucion normal y los datos de medias y desviaciones tipicas
+                    else:
+                        probabilidades[idx_fila][j] *= norm.pdf(fila[i], self.medias[i][j], self.desv[i][j])
+
+                # En ambos casos, después de procesar los atributos, se multiplica la probabilidad por el prior
+                probabilidades[idx_fila][j] *= (self.ocurrencias_clase[j]/len(datostest))
+
+            # Se obtiene la probabilidad diviendiendo entre la suma
+            total = sum(probabilidades[idx_fila])
+            for j in range(self.n_clases):
+                probabilidades[idx_fila][j] /= total
+
+            idx_fila += 1
+
+        self.probabilidades = probabilidades
+
+        # Se almacena en pred la clase que se predice
+        for i in range(len(datostest)):
+            cl = probabilidades[i].index(max(probabilidades[i]))
+            pred.append(cl)
+
+        self.prediccion = pred
+
+        return pred
