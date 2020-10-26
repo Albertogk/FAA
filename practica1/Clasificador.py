@@ -33,31 +33,27 @@ class Clasificador:
         return n_err/len(datos)
 
     # Realiza una clasificacion utilizando una estrategia de particionado determinada
-    # TODO: implementar esta funcion
-    def validacion(self, particionado, dataset, diccionario, atributosDiscretos, clasificador, seed=None):
+    def validacion(self, particionado, dataset, diccionario, atributosDiscretos, seed=None):
         # Creamos las particiones siguiendo la estrategia llamando a particionado.creaParticiones
         # - Para validacion cruzada: en el bucle hasta nv entrenamos el clasificador con la particion de train i
         # y obtenemos el error en la particion de test i
         # - Para validacion simple (hold-out): entrenamos el clasificador con la particion de train
         # y obtenemos el error en la particion test. Otra opcion es repetir la validación simple un número especificado de veces, obteniendo en cada una un error. Finalmente se calcularia la media.
 
-        n_datos = len(dataset)
+        n_datos = len(dataset.datos)
         particiones = particionado.creaParticiones(n_datos, seed)
 
-        cont = 0
-        error = 0
+        error = []
         for particion in particiones:
             datostest = dataset.extraeDatos(particion.indicesTest)
             datostrain = dataset.extraeDatos(particion.indicesTrain)
 
-            clasificador.entrenamiento(datostrain, atributosDiscretos, diccionario)
-            pred = clasificador.clasifica(datostest, atributosDiscretos, diccionario)
+            self.entrenamiento(datostrain, atributosDiscretos, diccionario)
+            pred = self.clasifica(datostest, atributosDiscretos, diccionario)
 
-            error += clasificador.error(datostest, pred)
+            error.append(self.error(datostest, pred))
 
-            cont += 1
-
-        return error/cont
+        return error
 
     ##############################################################################
 
