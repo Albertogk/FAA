@@ -33,7 +33,7 @@ class Clasificador:
         return n_err/len(datos)
 
     # Realiza una clasificacion utilizando una estrategia de particionado determinada
-    def validacion(self, particionado, dataset, diccionario, atributosDiscretos, seed=None):
+    def validacion(self, particionado, dataset, diccionario, atributosDiscretos, alpha = 1, seed=None):
         # Creamos las particiones siguiendo la estrategia llamando a particionado.creaParticiones
         # - Para validacion cruzada: en el bucle hasta nv entrenamos el clasificador con la particion de train i
         # y obtenemos el error en la particion de test i
@@ -49,7 +49,7 @@ class Clasificador:
             datostrain = dataset.extraeDatos(particion.indicesTrain)
 
             self.entrenamiento(datostrain, atributosDiscretos, diccionario)
-            pred = self.clasifica(datostest, atributosDiscretos, diccionario)
+            pred = self.clasifica(datostest, atributosDiscretos, diccionario, alpha=alpha)
 
             error.append(self.error(datostest, pred))
 
