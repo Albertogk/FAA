@@ -1,15 +1,14 @@
 from abc import ABCMeta, abstractmethod
 import numpy as np
 from scipy.stats import norm
-
+from scipy.spatial.distance import euclidean, cityblock, mahalanobis
 
 class Clasificador:
     # Clase abstracta
     __metaclass__ = ABCMeta
 
-    # Metodos abstractos que se implementan en casa clasificador concreto
+
     @abstractmethod
-    # TODO: esta funcion debe ser implementada en cada clasificador concreto
     # datosTrain: matriz numpy con los datos de entrenamiento
     # atributosDiscretos: array bool con la indicatriz de los atributos nominales
     # diccionario: array de diccionarios de la estructura Datos utilizados para la codificacion de variables discretas
@@ -17,7 +16,6 @@ class Clasificador:
         pass
 
     @abstractmethod
-    # TODO: esta funcion debe ser implementada en cada clasificador concreto
     # devuelve un numpy array con las predicciones
     def clasifica(self, datosTest, atributosDiscretos, diccionario):
         pass
@@ -38,7 +36,8 @@ class Clasificador:
         # - Para validacion cruzada: en el bucle hasta nv entrenamos el clasificador con la particion de train i
         # y obtenemos el error en la particion de test i
         # - Para validacion simple (hold-out): entrenamos el clasificador con la particion de train
-        # y obtenemos el error en la particion test. Otra opcion es repetir la validación simple un número especificado de veces, obteniendo en cada una un error. Finalmente se calcularia la media.
+        # y obtenemos el error en la particion test. Otra opcion es repetir la validación simple un número especificado de veces,
+        # obteniendo en cada una un error. Finalmente se calcularia la media.
 
         n_datos = len(dataset.datos)
         particiones = particionado.creaParticiones(n_datos, seed)
@@ -54,8 +53,6 @@ class Clasificador:
             error.append(self.error(datostest, pred))
 
         return error
-
-    ##############################################################################
 
 
 class ClasificadorNaiveBayes(Clasificador):
@@ -223,3 +220,69 @@ class ClasificadorNaiveBayes(Clasificador):
         self.prediccion = pred
 
         return pred
+
+
+class ClasificadorVecinosProximos(Clasificador):
+
+    def __init__(self):
+        self.datos_train_norm = None
+        self.medias = None
+        self.desv = None
+
+    def calcularMediasDesv(self, datos, nominalAtributos):
+
+        n_atributos = datos.shape[1]
+        medias = np.zeros(n_atributos)
+        desv = np.zeros(n_atributos)
+
+        for i in range(n_atributos):
+            if not nominalAtributos[i]:
+                medias[i] = np.mean(datos[:, i])
+                desv[i] = np.std(datos[:, i])
+
+        return medias, desv
+
+    def normalizarDatos(self, datos, nominalAtributos):
+
+        datos_normalizados = np.empty(datos.shape)
+
+        n_filas, n_atributos = datos.shape
+        for i in range(n_filas):
+            for j in range(n_atributos):
+                if not nominalAtributos[j]:
+                    datos_normalizados[i][j] = (datos[i][j] - self.medias[j])/self.desv[j]
+                else:
+                    datos_normalizados[i][j] = datos[i][j]
+
+        return datos_normalizados
+
+
+    def entrenamiento(self, datosTrain, atributosDiscretos, diccionario):
+        self.medias, self.desv = self.calcularMediasDesv(datosTrain, atributosDiscretos)
+        self.datos_train_norm = self.normalizarDatos(datosTrain, atributosDiscretos)
+
+
+    def clasifica(self, datostest, atributosDiscretos, diccionario, distancia=euclidean, k=3):
+
+        distancias = np.zeros((len(datostest), len(self.datos_train_norm)))
+        datos_test_norm = self.normalizarDatos(datostest, atributosDiscretos)
+
+        for i in range(datos_test_norm.shape[0]):
+            for j in range(self.datos_train_norm.shape[0]):
+                distancias[i][j] = (distancia(datos_test_norm[i], self.datos_train_norm[j]), j)
+
+        pred = np.zeros(datostest.shape[0])
+
+        for i in range(datos_test_norm.shape[0]):
+            clases = np.zeros(len(diccionario[-1]))
+
+            sort_dist = np.sort(distancias[i])[0:k]
+            for e in sort_dist:
+                clases[e[1]] += 1
+            pred[i] = np.argmax(clases)
+
+        return pred
+
+
+
+
