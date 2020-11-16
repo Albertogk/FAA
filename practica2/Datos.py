@@ -40,6 +40,6 @@ class Datos:
         for i in idx:
             retorno.append(self.datos[i])
 
-        return retorno
+        return np.array(retorno)
 
 

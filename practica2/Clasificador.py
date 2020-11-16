@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 import numpy as np
-from scipy.stats import norm
+from scipy.stats import norm, logistic
 from scipy.spatial.distance import euclidean, cityblock, mahalanobis
 
 class Clasificador:
@@ -264,25 +264,64 @@ class ClasificadorVecinosProximos(Clasificador):
 
     def clasifica(self, datostest, atributosDiscretos, diccionario, distancia=euclidean, k=3):
 
-        distancias = np.zeros((len(datostest), len(self.datos_train_norm)))
+        distancias = np.zeros((len(datostest), len(self.datos_train_norm), 2))
         datos_test_norm = self.normalizarDatos(datostest, atributosDiscretos)
 
         for i in range(datos_test_norm.shape[0]):
             for j in range(self.datos_train_norm.shape[0]):
-                distancias[i][j] = (distancia(datos_test_norm[i], self.datos_train_norm[j]), j)
+                clase_j = self.datos_train_norm[j][-1]
+                distancias[i][j] = [distancia(datos_test_norm[i], self.datos_train_norm[j]), clase_j]
 
         pred = np.zeros(datostest.shape[0])
 
         for i in range(datos_test_norm.shape[0]):
-            clases = np.zeros(len(diccionario[-1]))
 
-            sort_dist = np.sort(distancias[i])[0:k]
+            clases = np.zeros(len(diccionario[-1]))
+            sort_dist = sorted(distancias[i], key=lambda x: x[0])[0:k]
+
             for e in sort_dist:
-                clases[e[1]] += 1
+                clases[int(e[1])] += 1
+
             pred[i] = np.argmax(clases)
 
         return pred
 
+class ClasificadorRegresionLogistica(Clasificador):
+
+    def __init__(self, alpha=1, n_epocas=1):
+        self.alpha = alpha
+        self.n_epocas = n_epocas
+        self.w = []
+
+
+    def sigmoid(self, x):
+        return 1/(1 + np.exp(-x))
+
+    def entrenamiento(self, datosTrain, atributosDiscretos, diccionario):
+        w = np.random.rand(datosTrain.shape[1]) - 0.5
+        print(w)
+        for epoca in range(self.n_epocas):
+            for i in range(datosTrain.shape[0]):
+                x_i = datosTrain[i]
+                sigma = self.sigmoid(np.inner(w, x_i))
+                w = w - self.alpha*(sigma - x_i[-1])*x_i
+
+        self.w = w
+
+
+    def clasifica(self, datosTest, atributosDiscretos, diccionario):
+        pred = np.empty(datosTest.shape[0])
+        print(self.w)
+        for idx in range(datosTest.shape[0]):
+            x = datosTest[idx]
+            if idx < 10:
+                print(x)
+            if np.inner(self.w, np.concatenate(([1], x[:-1]))) < 0:
+                pred[idx] = 0
+            else:
+                pred[idx] = 1
+
+        return pred
 
 
 
