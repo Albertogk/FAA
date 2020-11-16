@@ -288,34 +288,30 @@ class ClasificadorVecinosProximos(Clasificador):
 
 class ClasificadorRegresionLogistica(Clasificador):
 
-    def __init__(self, alpha=1, n_epocas=1):
+    def __init__(self, alpha=0.001, n_epocas=100):
         self.alpha = alpha
         self.n_epocas = n_epocas
         self.w = []
-
 
     def sigmoid(self, x):
         return 1/(1 + np.exp(-x))
 
     def entrenamiento(self, datosTrain, atributosDiscretos, diccionario):
         w = np.random.rand(datosTrain.shape[1]) - 0.5
-        print(w)
         for epoca in range(self.n_epocas):
             for i in range(datosTrain.shape[0]):
-                x_i = datosTrain[i]
+                x_i = np.concatenate(([1], datosTrain[i][:-1]))
+                t_i = datosTrain[i][-1]
                 sigma = self.sigmoid(np.inner(w, x_i))
-                w = w - self.alpha*(sigma - x_i[-1])*x_i
+                w = w - self.alpha*(sigma - t_i)*x_i
 
         self.w = w
 
 
     def clasifica(self, datosTest, atributosDiscretos, diccionario):
         pred = np.empty(datosTest.shape[0])
-        print(self.w)
         for idx in range(datosTest.shape[0]):
             x = datosTest[idx]
-            if idx < 10:
-                print(x)
             if np.inner(self.w, np.concatenate(([1], x[:-1]))) < 0:
                 pred[idx] = 0
             else:
