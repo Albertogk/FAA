@@ -233,14 +233,25 @@ class ClasificadorVecinosProximos(Clasificador):
 
     def calcularMediasDesv(self, datos, nominalAtributos):
 
-        n_atributos = datos.shape[1]
+        n_filas, n_atributos = datos.shape
         medias = np.zeros(n_atributos)
         desv = np.zeros(n_atributos)
 
-        for i in range(n_atributos):
-            if not nominalAtributos[i]:
-                medias[i] = np.mean(datos[:, i])
-                desv[i] = np.std(datos[:, i])
+        for j in range(n_atributos):
+            for i in range(n_filas):
+                if not nominalAtributos[j]:
+                    medias[j] += datos[i][j]
+
+            print(medias[j])
+            medias[j] /= n_filas
+
+        for j in range(n_atributos):
+            for i in range(n_filas):
+                if not nominalAtributos[j]:
+                    desv[j] += (datos[i][j] - medias[j])**2
+
+            print(desv[j])
+            desv[j] /= n_filas
 
         return medias, desv
 
