@@ -230,6 +230,7 @@ class ClasificadorVecinosProximos(Clasificador):
         self.desv = None
         self.norm = True
         self.probabilidades = None
+        self.VI = None
 
     def calcularMediasDesv(self, datos, nominalAtributos):
 
@@ -249,7 +250,7 @@ class ClasificadorVecinosProximos(Clasificador):
                     desv[j] += (datos[i][j] - medias[j])**2
 
             desv[j] = np.sqrt(desv[j])/n_filas
-  
+
         return medias, desv
 
     def normalizarDatos(self, datos, nominalAtributos):
@@ -266,6 +267,15 @@ class ClasificadorVecinosProximos(Clasificador):
 
         return datos_normalizados
 
+    def dist_euclidea(self, x1, x2):
+        return np.sqrt(sum((x1-x2)*(x1-x2)))
+
+    def dist_manhattan(self, x1, x2):
+        return sum(np.abs(x1-x2))
+
+    def dist_mahalanobis(self, x1, x2, VI):
+        res = np.dot(np.dot((x1-x2).T, VI), (x1 - x2))
+        return np.sqrt(res)
 
     def entrenamiento(self, datosTrain, atributosDiscretos, diccionario, norm=True):
         self.norm = norm
@@ -275,6 +285,7 @@ class ClasificadorVecinosProximos(Clasificador):
         else:
             self.datos_train_norm = datosTrain
 
+        self.VI = np.linalg.inv(np.cov(self.datos_train_norm[:, :-1].T))
 
     def clasifica(self, datostest, atributosDiscretos, diccionario, distancia="euclidea", k=3):
 
@@ -286,19 +297,19 @@ class ClasificadorVecinosProximos(Clasificador):
         else:
             datos_test_norm = datostest
 
-        V = np.linalg.inv(np.cov(self.datos_train_norm[:, :-1].T))
+
 
         for i in range(datos_test_norm.shape[0]):
             for j in range(self.datos_train_norm.shape[0]):
                 clase_j = self.datos_train_norm[j][-1]
 
                 if distancia == "euclidea":
-                    distancias[i][j] = [euclidean(datos_test_norm[i][:-1], self.datos_train_norm[j][:-1]), clase_j]
+                    distancias[i][j] = [self.dist_euclidea(datos_test_norm[i][:-1], self.datos_train_norm[j][:-1]), clase_j]
                 elif distancia == "manhattan":
-                    distancias[i][j] = [sum(np.abs(datos_test_norm[i][:-1]-self.datos_train_norm[j][:-1])), clase_j]
+                    distancias[i][j] = [self.dist_manhattan(datos_test_norm[i][:-1], self.datos_train_norm[j][:-1]), clase_j]
                 elif distancia == "mahalanobis":
                     
-                    distancias[i][j] = [mahalanobis(datos_test_norm[i][:-1], self.datos_train_norm[j][:-1], V), clase_j]
+                    distancias[i][j] = [self.dist_mahalanobis(datos_test_norm[i][:-1], self.datos_train_norm[j][:-1], self.VI), clase_j]
 
         pred = np.zeros(datostest.shape[0])
 
