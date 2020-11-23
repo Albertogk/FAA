@@ -248,8 +248,8 @@ class ClasificadorVecinosProximos(Clasificador):
                 if not nominalAtributos[j]:
                     desv[j] += (datos[i][j] - medias[j])**2
 
-            desv[j] /= n_filas
-
+            desv[j] = np.sqrt(desv[j])/n_filas
+  
         return medias, desv
 
     def normalizarDatos(self, datos, nominalAtributos):
@@ -275,7 +275,7 @@ class ClasificadorVecinosProximos(Clasificador):
         else:
             self.datos_train_norm = datosTrain
 
- 
+
     def clasifica(self, datostest, atributosDiscretos, diccionario, distancia="euclidea", k=3):
 
         distancias = np.zeros((len(datostest), len(self.datos_train_norm), 2))
