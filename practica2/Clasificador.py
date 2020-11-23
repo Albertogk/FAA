@@ -241,8 +241,6 @@ class ClasificadorVecinosProximos(Clasificador):
             for i in range(n_filas):
                 if not nominalAtributos[j]:
                     medias[j] += datos[i][j]
-
-            print(medias[j])
             medias[j] /= n_filas
 
         for j in range(n_atributos):
@@ -250,7 +248,6 @@ class ClasificadorVecinosProximos(Clasificador):
                 if not nominalAtributos[j]:
                     desv[j] += (datos[i][j] - medias[j])**2
 
-            print(desv[j])
             desv[j] /= n_filas
 
         return medias, desv
@@ -278,7 +275,7 @@ class ClasificadorVecinosProximos(Clasificador):
         else:
             self.datos_train_norm = datosTrain
 
-
+ 
     def clasifica(self, datostest, atributosDiscretos, diccionario, distancia="euclidea", k=3):
 
         distancias = np.zeros((len(datostest), len(self.datos_train_norm), 2))
@@ -289,12 +286,12 @@ class ClasificadorVecinosProximos(Clasificador):
         else:
             datos_test_norm = datostest
 
-        # V = np.linalg.inv(np.cov(self.datos_train_norm.T))
+        V = np.linalg.inv(np.cov(self.datos_train_norm[:, :-1].T))
 
         for i in range(datos_test_norm.shape[0]):
             for j in range(self.datos_train_norm.shape[0]):
                 clase_j = self.datos_train_norm[j][-1]
-                
+
                 if distancia == "euclidea":
                     distancias[i][j] = [euclidean(datos_test_norm[i][:-1], self.datos_train_norm[j][:-1]), clase_j]
                 elif distancia == "manhattan":

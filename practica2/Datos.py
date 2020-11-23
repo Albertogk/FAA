@@ -16,6 +16,8 @@ class Datos:
             self.nominalAtributos.append(self.esNominal(atributo))
             aux_set.append(set())
 
+        self.nominalAtributos[-1] = True
+
         for linea in self.datos:
             idx = 0
             for atributo in linea:
