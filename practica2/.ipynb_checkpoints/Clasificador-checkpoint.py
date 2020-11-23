@@ -73,7 +73,7 @@ class ClasificadorNaiveBayes(Clasificador):
 
     def entrenamiento(self, datostrain, atributosDiscretos, diccionario):
 
-        if not datostrain:
+        if datostrain is None:
             return
 
         n_atributos = len(datostrain[0]) - 1

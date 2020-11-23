@@ -73,7 +73,7 @@ class ClasificadorNaiveBayes(Clasificador):
 
     def entrenamiento(self, datostrain, atributosDiscretos, diccionario):
 
-        if not datostrain:
+        if datostrain is None:
             return
 
         n_atributos = len(datostrain[0]) - 1
@@ -114,7 +114,7 @@ class ClasificadorNaiveBayes(Clasificador):
         for fila in datostrain:
 
             # Se actualiza el número de elementos que contiene cada clase
-            ocurrencias_clase[fila[-1]] += 1
+            ocurrencias_clase[int(fila[-1])] += 1
 
             # Para cada atributo:
             for i in range(len(fila)-1):
@@ -125,10 +125,10 @@ class ClasificadorNaiveBayes(Clasificador):
                 # fila[i] : valor
                 # fila[-1] : clase
                 if atributosDiscretos[i]:
-                    ocurrencias[i][fila[i]][fila[-1]] += 1
+                    ocurrencias[i][fila[i]][int(fila[-1])] += 1
                 else:
                     # Si es continuo, se suma el valor en el array de medias
-                    medias[i][fila[-1]] += fila[i]
+                    medias[i][int(fila[-1])] += fila[i]
 
 
         # Se calculan las medias usando la suma obtenida y el número de elementos
@@ -142,7 +142,7 @@ class ClasificadorNaiveBayes(Clasificador):
         for fila in datostrain:
             for i in range(len(fila)-1):
                 if not atributosDiscretos[i]:
-                    desv[i][fila[-1]] += (fila[i] - medias[i][fila[-1]])**2
+                    desv[i][int(fila[-1])] += (fila[i] - medias[i][int(fila[-1])])**2
 
         for i in range(len(desv)):
             if not atributosDiscretos[i]:
