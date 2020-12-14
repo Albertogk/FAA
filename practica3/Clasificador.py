@@ -3,10 +3,10 @@ import numpy as np
 from scipy.stats import norm, logistic
 from scipy.spatial.distance import euclidean, cityblock, mahalanobis
 
+
 class Clasificador:
     # Clase abstracta
     __metaclass__ = ABCMeta
-
 
     @abstractmethod
     # datosTrain: matriz numpy con los datos de entrenamiento
@@ -28,10 +28,11 @@ class Clasificador:
             if datos[i][-1] != pred[i]:
                 n_err += 1
 
-        return n_err/len(datos)
+        return n_err / len(datos)
 
     # Realiza una clasificacion utilizando una estrategia de particionado determinada
-    def validacion(self, particionado, dataset, diccionario, atributosDiscretos, alpha = 1, seed=None):
+    def validacion(self, particionado, dataset, diccionario,
+                   atributosDiscretos, alpha=1, seed=None):
         # Creamos las particiones siguiendo la estrategia llamando a particionado.creaParticiones
         # - Para validacion cruzada: en el bucle hasta nv entrenamos el clasificador con la particion de train i
         # y obtenemos el error en la particion de test i
@@ -48,7 +49,8 @@ class Clasificador:
             datostrain = dataset.extraeDatos(particion.indicesTrain)
 
             self.entrenamiento(datostrain, atributosDiscretos, diccionario)
-            pred = self.clasifica(datostest, atributosDiscretos, diccionario, alpha=alpha)
+            pred = self.clasifica(datostest, atributosDiscretos, diccionario,
+                                  alpha=alpha)
 
             error.append(self.error(datostest, pred))
 
@@ -85,7 +87,7 @@ class ClasificadorNaiveBayes(Clasificador):
         desv = []
 
         # Lista donde se guarda el número de veces que aparece cada clase
-        ocurrencias_clase = [0]*n_clases
+        ocurrencias_clase = [0] * n_clases
 
         # Inicialuizacion de listas de datos
         for i in range(n_atributos):
@@ -98,7 +100,7 @@ class ClasificadorNaiveBayes(Clasificador):
                 # [a1: [v1: [n_c1, n_c2...], v2: [[n_c1, n_c2...]...], a2: ...]
                 n_valores = len(diccionario[i])
                 for j in range(n_valores):
-                    ocurrencias[i].append([0]*n_clases)
+                    ocurrencias[i].append([0] * n_clases)
 
                 medias.append([])
                 desv.append([])
@@ -108,8 +110,8 @@ class ClasificadorNaiveBayes(Clasificador):
                 # Se guarda un valor para cada atributo y clase:
                 # [a1: [media_c1, media_c2...], a2: [media_c1...], ...]
 
-                medias.append([0]*n_clases)
-                desv.append([0]*n_clases)
+                medias.append([0] * n_clases)
+                desv.append([0] * n_clases)
 
         for fila in datostrain:
 
@@ -117,7 +119,7 @@ class ClasificadorNaiveBayes(Clasificador):
             ocurrencias_clase[int(fila[-1])] += 1
 
             # Para cada atributo:
-            for i in range(len(fila)-1):
+            for i in range(len(fila) - 1):
 
                 # Si el atributo es discreto se aumenta en uno la posicion
                 # correspondiente
@@ -130,7 +132,6 @@ class ClasificadorNaiveBayes(Clasificador):
                     # Si es continuo, se suma el valor en el array de medias
                     medias[i][int(fila[-1])] += fila[i]
 
-
         # Se calculan las medias usando la suma obtenida y el número de elementos
         # para cada clase
         for i in range(len(medias)):
@@ -140,9 +141,10 @@ class ClasificadorNaiveBayes(Clasificador):
 
         # Se calcula la desviacion media
         for fila in datostrain:
-            for i in range(len(fila)-1):
+            for i in range(len(fila) - 1):
                 if not atributosDiscretos[i]:
-                    desv[i][int(fila[-1])] += (fila[i] - medias[i][int(fila[-1])])**2
+                    desv[i][int(fila[-1])] += (fila[i] - medias[i][
+                        int(fila[-1])]) ** 2
 
         for i in range(len(desv)):
             if not atributosDiscretos[i]:
@@ -170,13 +172,13 @@ class ClasificadorNaiveBayes(Clasificador):
         probabilidades = []
 
         for _ in datostest:
-            probabilidades.append([1]*self.n_clases)
+            probabilidades.append([1] * self.n_clases)
 
         # Lista que guarda para que atributos será necesario aplicar Laplace
-        laplace = [0]*(len(datostest[0])-1)
+        laplace = [0] * (len(datostest[0]) - 1)
 
         for fila in datostest:
-            for i in range(len(fila)-1):
+            for i in range(len(fila) - 1):
                 if atributosDiscretos[i]:
                     for j in range(self.n_clases):
                         if self.ocurrencias[i][fila[i]][j] == 0:
@@ -187,21 +189,32 @@ class ClasificadorNaiveBayes(Clasificador):
 
         for fila in datostest:
             for j in range(self.n_clases):
-                for i in range(len(fila)-1):
+                for i in range(len(fila) - 1):
 
                     # Si el atributo es discreto, se calcula la probabilidad utilizando
                     # "ocurrencias" de entrenamiento
                     # Con el metodo aproximado de Naive-Bayes
                     if atributosDiscretos[i]:
                         n_valores = len(diccionario[i])
-                        probabilidades[idx_fila][j] *= (self.ocurrencias[i][fila[i]][j] + laplace[i])/(self.ocurrencias_clase[j] + laplace[i]*n_valores)
+                        probabilidades[idx_fila][j] *= (self.ocurrencias[i][
+                                                            fila[i]][j] +
+                                                        laplace[i]) / (
+                                                                   self.ocurrencias_clase[
+                                                                       j] +
+                                                                   laplace[
+                                                                       i] * n_valores)
 
                     # Para atributos continuos se calcula la probabilidad usando la distibucion normal y los datos de medias y desviaciones tipicas
                     else:
-                        probabilidades[idx_fila][j] *= norm.pdf(fila[i], self.medias[i][j], self.desv[i][j])
+                        probabilidades[idx_fila][j] *= norm.pdf(fila[i],
+                                                                self.medias[i][
+                                                                    j],
+                                                                self.desv[i][
+                                                                    j])
 
                 # En ambos casos, después de procesar los atributos, se multiplica la probabilidad por el prior
-                probabilidades[idx_fila][j] *= (self.ocurrencias_clase[j]/len(datostest))
+                probabilidades[idx_fila][j] *= (
+                            self.ocurrencias_clase[j] / len(datostest))
 
             # Se obtiene la probabilidad diviendiendo entre la suma
             total = sum(probabilidades[idx_fila])
@@ -247,9 +260,9 @@ class ClasificadorVecinosProximos(Clasificador):
         for j in range(n_atributos):
             for i in range(n_filas):
                 if not nominalAtributos[j]:
-                    desv[j] += (datos[i][j] - medias[j])**2
+                    desv[j] += (datos[i][j] - medias[j]) ** 2
 
-            desv[j] = np.sqrt(desv[j])/n_filas
+            desv[j] = np.sqrt(desv[j]) / n_filas
 
         return medias, desv
 
@@ -261,55 +274,68 @@ class ClasificadorVecinosProximos(Clasificador):
         for i in range(n_filas):
             for j in range(n_atributos):
                 if not nominalAtributos[j]:
-                    datos_normalizados[i][j] = (datos[i][j] - self.medias[j])/self.desv[j]
+                    datos_normalizados[i][j] = (datos[i][j] - self.medias[j]) / \
+                                               self.desv[j]
                 else:
                     datos_normalizados[i][j] = datos[i][j]
 
         return datos_normalizados
 
     def dist_euclidea(self, x1, x2):
-        return np.sqrt(sum((x1-x2)*(x1-x2)))
+        return np.sqrt(sum((x1 - x2) * (x1 - x2)))
 
     def dist_manhattan(self, x1, x2):
-        return sum(np.abs(x1-x2))
+        return sum(np.abs(x1 - x2))
 
     def dist_mahalanobis(self, x1, x2, VI):
-        res = np.dot(np.dot((x1-x2).T, VI), (x1 - x2))
+        res = np.dot(np.dot((x1 - x2).T, VI), (x1 - x2))
         return np.sqrt(res)
 
-    def entrenamiento(self, datosTrain, atributosDiscretos, diccionario, norm=True):
+    def entrenamiento(self, datosTrain, atributosDiscretos, diccionario,
+                      norm=True):
         self.norm = norm
-        self.medias, self.desv = self.calcularMediasDesv(datosTrain, atributosDiscretos)
+        self.medias, self.desv = self.calcularMediasDesv(datosTrain,
+                                                         atributosDiscretos)
         if self.norm:
-            self.datos_train_norm = self.normalizarDatos(datosTrain, atributosDiscretos)
+            self.datos_train_norm = self.normalizarDatos(datosTrain,
+                                                         atributosDiscretos)
         else:
             self.datos_train_norm = datosTrain
 
         self.VI = np.linalg.inv(np.cov(self.datos_train_norm[:, :-1].T))
 
-    def clasifica(self, datostest, atributosDiscretos, diccionario, distancia="euclidea", k=3):
+    def clasifica(self, datostest, atributosDiscretos, diccionario,
+                  distancia="euclidea", k=3):
 
         distancias = np.zeros((len(datostest), len(self.datos_train_norm), 2))
         self.probabilidades = np.zeros(datostest.shape[0])
 
         if self.norm:
-            datos_test_norm = self.normalizarDatos(datostest, atributosDiscretos)
+            datos_test_norm = self.normalizarDatos(datostest,
+                                                   atributosDiscretos)
         else:
             datos_test_norm = datostest
-
-
 
         for i in range(datos_test_norm.shape[0]):
             for j in range(self.datos_train_norm.shape[0]):
                 clase_j = self.datos_train_norm[j][-1]
 
                 if distancia == "euclidea":
-                    distancias[i][j] = [self.dist_euclidea(datos_test_norm[i][:-1], self.datos_train_norm[j][:-1]), clase_j]
+                    distancias[i][j] = [
+                        self.dist_euclidea(datos_test_norm[i][:-1],
+                                           self.datos_train_norm[j][:-1]),
+                        clase_j]
                 elif distancia == "manhattan":
-                    distancias[i][j] = [self.dist_manhattan(datos_test_norm[i][:-1], self.datos_train_norm[j][:-1]), clase_j]
+                    distancias[i][j] = [
+                        self.dist_manhattan(datos_test_norm[i][:-1],
+                                            self.datos_train_norm[j][:-1]),
+                        clase_j]
                 elif distancia == "mahalanobis":
-                    
-                    distancias[i][j] = [self.dist_mahalanobis(datos_test_norm[i][:-1], self.datos_train_norm[j][:-1], self.VI), clase_j]
+
+                    distancias[i][j] = [
+                        self.dist_mahalanobis(datos_test_norm[i][:-1],
+                                              self.datos_train_norm[j][:-1],
+                                              self.VI), clase_j]
 
         pred = np.zeros(datostest.shape[0])
 
@@ -321,11 +347,12 @@ class ClasificadorVecinosProximos(Clasificador):
             for e in sort_dist:
                 clases[int(e[1])] += 1
 
-            self.probabilidades[i] = clases[1]/sum(clases)
+            self.probabilidades[i] = clases[1] / sum(clases)
 
             pred[i] = np.argmax(clases)
 
         return pred
+
 
 class ClasificadorRegresionLogistica(Clasificador):
 
@@ -335,7 +362,7 @@ class ClasificadorRegresionLogistica(Clasificador):
         self.w = []
 
     def sigmoid(self, x):
-        return 1/(1 + np.exp(-x))
+        return 1 / (1 + np.exp(-x))
 
     def entrenamiento(self, datosTrain, atributosDiscretos, diccionario):
         w = np.random.rand(datosTrain.shape[1]) - 0.5
@@ -344,10 +371,9 @@ class ClasificadorRegresionLogistica(Clasificador):
                 x_i = np.concatenate(([1], datosTrain[i][:-1]))
                 t_i = datosTrain[i][-1]
                 sigma = self.sigmoid(np.inner(w, x_i))
-                w = w - self.alpha*(sigma - t_i)*x_i
+                w = w - self.alpha * (sigma - t_i) * x_i
 
         self.w = w
-
 
     def clasifica(self, datosTest, atributosDiscretos, diccionario):
         pred = np.empty(datosTest.shape[0])
@@ -364,19 +390,17 @@ class ClasificadorRegresionLogistica(Clasificador):
 class AlgoritmoGenetico(Clasificador):
 
     def __init__(self):
-        self.base_reglas = None
         self.mejor_individuo = None
-
 
     def transformar_datos(self, datos, diccionario):
 
-        datos_transformados = np.zeros((datos.shape[0], sum(map(len, diccionario[:-1])) + 1), dtype=int)
+        datos_transformados = np.zeros(
+            (datos.shape[0], sum(map(len, diccionario[:-1])) + 1), dtype=int)
 
         for i in range(datos.shape[0]):
             cnt = 0
-            for j in range(datos.shape[1]-1):
-
-                datos_transformados[i][cnt+int(datos[i][j])] = 1
+            for j in range(datos.shape[1] - 1):
+                datos_transformados[i][cnt + int(datos[i][j])] = 1
                 cnt += len(diccionario[j])
 
             datos_transformados[i][-1] = datos[i][-1]
@@ -399,56 +423,105 @@ class AlgoritmoGenetico(Clasificador):
             if cnt == len(individuo[:-1]):
                 aciertos += (individuo[-1] == reglas[i][-1])
             else:
-                aciertos += ((individuo[-1]+1)%2 == reglas[i][-1])
+                aciertos += ((individuo[-1] + 1) % 2 == reglas[i][-1])
 
-        return aciertos/reglas.shape[0]
+        return aciertos / reglas.shape[0]
 
+    def entrenamiento(self, datosTrain, atributosDiscretos, diccionario,
+                      elitismo=0.05, tamanio_poblacion=50, n_epocas=100):
 
-    def entrenamiento(self, datosTrain, atributosDiscretos, diccionario, elitismo=0.05, tamanio_poblacion=50, n_epocas=100):
+        base_reglas = self.transformar_datos(datosTrain, diccionario)
+        elites = int(tamanio_poblacion * elitismo)
 
-        self.base_reglas = self.transformar_datos(datosTrain, diccionario)
-        elites = int(tamanio_poblacion*elitismo)
-
-        if (elites % 2 != 0 and tamanio_poblacion % 2 == 0) or (elites % 2 == 0 and tamanio_poblacion % 2 != 0):
+        if (elites % 2 != 0 and tamanio_poblacion % 2 == 0) or (
+                elites % 2 == 0 and tamanio_poblacion % 2 != 0):
             elites += 1
 
-        generacion = self.base_reglas
-        next_generacion = np.empty((tamanio_poblacion, self.base_reglas.shape[1]), dtype=int)
+        generacion = base_reglas
+        next_generacion = np.empty(
+            (tamanio_poblacion, base_reglas.shape[1]), dtype=int)
 
         for epoca in range(n_epocas):
 
             fitness = np.empty(generacion.shape[0])
             for i in range(fitness.shape[0]):
-                fitness[i] = self.get_aciertos(self.base_reglas, generacion[i], diccionario)
+                fitness[i] = self.get_aciertos(base_reglas, generacion[i],
+                                               diccionario)
 
             # elitismo
             ind = np.argpartition(fitness, -elites)[-elites:]
             next_generacion[:elites] = generacion[ind]
 
             # ruleta
-            fitness = fitness/sum(fitness)
+            fitness_ruleta = fitness / sum(fitness)
 
             for i in range(elites, tamanio_poblacion, 2):
                 progenitores = np.empty(2, dtype=int)
                 for d in range(progenitores.shape[0]):
                     numero = np.random.rand()
                     total = 0
-                    for k in range(len(fitness)):
-                        total += fitness[k]
+                    for k in range(len(fitness_ruleta)):
+                        total += fitness_ruleta[k]
                         if numero <= total:
                             progenitores[d] = k
                             break
 
                 # cruce
-                pto_cruce = np.random.randint(1, len(self.base_reglas[0]))
+                pto_cruce = np.random.randint(1, len(base_reglas[0]))
 
-                next_generacion[i] = np.concatenate((generacion[progenitores[0]][:pto_cruce], generacion[progenitores[1]][pto_cruce:]))
-                next_generacion[i+1] = np.concatenate((generacion[progenitores[1]][:pto_cruce], generacion[progenitores[0]][pto_cruce:]))
+                next_generacion[i] = np.concatenate((generacion[
+                                                         progenitores[0]][
+                                                     :pto_cruce], generacion[
+                                                                      progenitores[
+                                                                          1]][
+                                                                  pto_cruce:]))
+                next_generacion[i + 1] = np.concatenate((generacion[
+                                                             progenitores[1]][
+                                                         :pto_cruce],
+                                                         generacion[
+                                                             progenitores[0]][
+                                                         pto_cruce:]))
+
+            fitness_medio = np.mean(fitness)
+            fitness_max = max(fitness)
+            print("Generacion:", epoca)
+            print("Fitness medio:", fitness_medio)
+            print("Fitness mejor individuo:", fitness_max)
+            print('###################################################')
+
+            if abs(fitness_max-fitness_medio) < 1e-04:
+                print("Converge en", epoca, "epocas")
+                break
+
+
 
             generacion = next_generacion
 
         self.mejor_individuo = generacion[np.where(fitness == max(fitness))][0]
 
-    def clasifica(self, datosTest, atributosDiscretos, diccionario):
-        pass
 
+    def obtener_clase(self, dato, n_valores, n_atributos):
+        cnt = 0
+        for j in range(n_atributos-1):
+            next_cnt = cnt + n_valores[j]
+            aux = dato[cnt:next_cnt] & self.mejor_individuo[cnt:next_cnt]
+
+            if 1 not in aux:
+                return (self.mejor_individuo[-1] + 1) % 2
+
+            cnt = next_cnt
+
+        return self.mejor_individuo[-1]
+
+
+
+    def clasifica(self, datosTest, atributosDiscretos, diccionario):
+        pred = np.empty(datosTest.shape[0])
+        n_valores = list(map(len, diccionario[:-1]))
+        n_atributos = len(diccionario)
+        datosTestTran = self.transformar_datos(datosTest, diccionario)
+
+        for idx in range(datosTest.shape[0]):
+            pred[idx] = self.obtener_clase(datosTestTran[idx], n_valores, n_atributos)
+
+        return pred
