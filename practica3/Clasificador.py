@@ -391,6 +391,7 @@ class AlgoritmoGenetico(Clasificador):
 
     def __init__(self):
         self.ultima_generacion = None
+        self.ultimo_fitness = None
 
     def transformar_datos(self, datos, diccionario):
 
@@ -428,7 +429,8 @@ class AlgoritmoGenetico(Clasificador):
         return aciertos / reglas.shape[0]
 
     def entrenamiento(self, datosTrain, atributosDiscretos, diccionario,
-                      elitismo=0.05, tamanio_poblacion=50, n_epocas=100):
+                      elitismo=0.05, tamanio_poblacion=50, n_epocas=100,
+                      puntos_cruce=1, p_mutacion=0.05):
 
         base_reglas = self.transformar_datos(datosTrain, diccionario)
         elites = int(tamanio_poblacion * elitismo)
@@ -466,21 +468,40 @@ class AlgoritmoGenetico(Clasificador):
                             progenitores[d] = k
                             break
 
-                # cruce
-                pto_cruce = np.random.randint(1, len(base_reglas[0]))
+                # cruce uniforme
+                if puntos_cruce is None:
+                    for bit in range(generacion.shape[1]):
+                        if np.random.random() < 0.5:
+                            next_generacion[i][bit] = generacion[progenitores[0]][bit]
+                            next_generacion[i+1][bit] = generacion[progenitores[1]][bit]
 
-                next_generacion[i] = np.concatenate((generacion[
-                                                         progenitores[0]][
-                                                     :pto_cruce], generacion[
-                                                                      progenitores[
-                                                                          1]][
-                                                                  pto_cruce:]))
-                next_generacion[i + 1] = np.concatenate((generacion[
-                                                             progenitores[1]][
-                                                         :pto_cruce],
-                                                         generacion[
-                                                             progenitores[0]][
-                                                         pto_cruce:]))
+                        else:
+                            next_generacion[i][bit] = generacion[progenitores[1]][bit]
+                            next_generacion[i + 1][bit] = generacion[progenitores[0]][bit]
+
+                # cruce en n puntos
+                else:
+                    permutation = np.random.permutation(np.arange(generacion.shape[1]))
+                    permutation = sorted(permutation[:puntos_cruce])
+
+                    permutation = np.concatenate((permutation, [generacion.shape[1]]))
+                    cnt = 0
+                    for n in range(permutation.shape[0]):
+                        if n % 2 == 0:
+                            next_generacion[i][cnt:permutation[n]] = generacion[progenitores[0]][cnt:permutation[n]]
+                            next_generacion[i + 1][cnt:permutation[n]] = generacion[progenitores[1]][cnt:permutation[n]]
+                        else:
+                            next_generacion[i][cnt:permutation[n]] = generacion[progenitores[1]][cnt:permutation[n]]
+                            next_generacion[i + 1][cnt:permutation[n]] = generacion[progenitores[0]][cnt:permutation[n]]
+
+                        cnt = permutation[n]
+
+            # mutacion
+            if p_mutacion > 0:
+                for i in range(next_generacion.shape[0]):
+                    for bit in range(next_generacion.shape[1]):
+                        if np.random.random() < p_mutacion:
+                            next_generacion[i][bit] = (next_generacion[i][bit] + 1)%2
 
             fitness_medio = np.mean(fitness)
             fitness_max = max(fitness)
@@ -489,19 +510,19 @@ class AlgoritmoGenetico(Clasificador):
             print("Fitness mejor individuo:", fitness_max)
             print('###################################################')
 
-            if abs(fitness_max-fitness_medio) < 1e-04:
-                print("Converge en", epoca, "epocas")
-                break
-
-
-
             generacion = next_generacion
 
         self.ultima_generacion = generacion
 
+        self.ultimo_fitness = np.empty(self.ultima_generacion.shape[0])
+        for i in range(self.ultimo_fitness.shape[0]):
+            self.ultimo_fitness[i] = self.get_aciertos(base_reglas, self.ultima_generacion[i], diccionario)
 
-    def obtener_clase(self, dato, n_valores, n_atributos):
+
+    def obtener_clase(self, dato, n_valores, n_atributos, ponderar):
         cnt = 0
+        votos = np.zeros(2, dtype=int)
+
         for i in range(self.ultima_generacion.shape[0]):
             cumple_regla = True
             for j in range(n_atributos-1):
@@ -513,21 +534,34 @@ class AlgoritmoGenetico(Clasificador):
                     break
 
                 cnt = next_cnt
-            
+
             if cumple_regla:
-                return self.ultima_generacion[i][-1]
+                if ponderar:
+                    votos[self.ultima_generacion[i][-1]] += \
+                    self.ultimo_fitness[i]
 
-        return (self.ultima_generacion[i][-1]+1)%2
+                else:
+                    return self.ultima_generacion[i][-1]
+
+        if ponderar:
+            if votos[0] < votos[1]:
+                return 1
+
+            else:
+                return 0
+
+        else:
+            return (self.ultima_generacion[0][-1]+1)%2
 
 
 
-    def clasifica(self, datosTest, atributosDiscretos, diccionario):
+    def clasifica(self, datosTest, atributosDiscretos, diccionario, ponderar=False):
         pred = np.empty(datosTest.shape[0])
         n_valores = list(map(len, diccionario[:-1]))
         n_atributos = len(diccionario)
         datosTestTrain = self.transformar_datos(datosTest, diccionario)
 
         for idx in range(datosTest.shape[0]):
-            pred[idx] = self.obtener_clase(datosTestTrain[idx], n_valores, n_atributos)
+            pred[idx] = self.obtener_clase(datosTestTrain[idx], n_valores, n_atributos, ponderar=ponderar)
 
         return pred
