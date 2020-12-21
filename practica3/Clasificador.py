@@ -430,7 +430,8 @@ class AlgoritmoGenetico(Clasificador):
 
     def entrenamiento(self, datosTrain, atributosDiscretos, diccionario,
                       elitismo=0.05, tamanio_poblacion=50, n_epocas=100,
-                      puntos_cruce=1, p_mutacion=0.01, reglas_por_ind=3):
+                      puntos_cruce=1, p_mutacion=0.02, reglas_por_ind=3,
+                      flag_print=True):
 
         if reglas_por_ind > datosTrain.shape[0]/tamanio_poblacion:
             reglas_por_ind = int(datosTrain.shape[0]/tamanio_poblacion)
@@ -524,10 +525,12 @@ class AlgoritmoGenetico(Clasificador):
 
             fitness_medio = np.mean(fitness)
             fitness_max = max(fitness)
-            print("Generacion:", epoca)
-            print("Fitness medio:", fitness_medio)
-            print("Fitness mejor individuo:", fitness_max)
-            print('###################################################')
+
+            if flag_print:
+                print("Generacion:", epoca)
+                print("Fitness medio:", fitness_medio)
+                print("Fitness mejor individuo:", fitness_max)
+                print('###################################################')
 
             generacion = next_generacion
 
@@ -538,10 +541,11 @@ class AlgoritmoGenetico(Clasificador):
 
         fitness_medio = np.mean(fitness)
         fitness_max = max(fitness)
-        print("Generacion:", n_epocas)
-        print("Fitness medio:", fitness_medio)
-        print("Fitness mejor individuo:", fitness_max)
-        print('###################################################')
+        if flag_print:
+            print("Generacion:", n_epocas)
+            print("Fitness medio:", fitness_medio)
+            print("Fitness mejor individuo:", fitness_max)
+            print('###################################################')
 
         ind = np.argpartition(fitness, -1)[-1:]
         self.ultimo_individuo = generacion[ind[0]]
