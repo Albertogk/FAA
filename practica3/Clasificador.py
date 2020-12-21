@@ -430,7 +430,7 @@ class AlgoritmoGenetico(Clasificador):
 
     def entrenamiento(self, datosTrain, atributosDiscretos, diccionario,
                       elitismo=0.05, tamanio_poblacion=50, n_epocas=100,
-                      puntos_cruce=1, p_mutacion=0.05, reglas_por_ind=3):
+                      puntos_cruce=1, p_mutacion=0.01, reglas_por_ind=3):
 
         if reglas_por_ind > datosTrain.shape[0]/tamanio_poblacion:
             reglas_por_ind = int(datosTrain.shape[0]/tamanio_poblacion)
@@ -451,7 +451,7 @@ class AlgoritmoGenetico(Clasificador):
         for i in range(generacion.shape[0]):
             for j in range(reglas_por_ind):
                 generacion[i][j] =\
-                    base_reglas[np.random.randint(0, base_reglas.shape[0])]
+                    base_reglas[np.random.randint(0, high=base_reglas.shape[0])]
 
         next_generacion = np.empty(
             (tamanio_poblacion, reglas_por_ind, base_reglas.shape[1]),
@@ -465,8 +465,9 @@ class AlgoritmoGenetico(Clasificador):
                                                diccionario)
 
             # elitismo
-            ind = np.argpartition(fitness, -elites)[-elites:]
-            next_generacion[:elites] = generacion[ind]
+            if elites > 0:
+                ind = np.argpartition(fitness, -elites)[-elites:]
+                next_generacion[:elites] = generacion[ind]
 
             # ruleta
             fitness_ruleta = fitness / sum(fitness)
@@ -485,7 +486,7 @@ class AlgoritmoGenetico(Clasificador):
                 # cruce uniforme
                 if puntos_cruce is None:
                     for k in range(reglas_por_ind):
-                        for bit in range(generacion.shape[1]):
+                        for bit in range(generacion.shape[2]):
                             if np.random.random() < 0.5:
                                 next_generacion[i][k][bit] = generacion[progenitores[0]][k][bit]
                                 next_generacion[i+1][k][bit] = generacion[progenitores[1]][k][bit]
@@ -496,12 +497,13 @@ class AlgoritmoGenetico(Clasificador):
 
                 # cruce en n puntos
                 else:
-                    permutation = np.random.permutation(np.arange(generacion.shape[1]))
+                    permutation = np.random.permutation(np.arange(1, generacion.shape[2]))
                     permutation = sorted(permutation[:puntos_cruce])
 
-                    permutation = np.concatenate((permutation, [generacion.shape[1]]))
-                    cnt = 0
+                    permutation = np.concatenate((permutation, [generacion.shape[2]]))
+
                     for k in range(reglas_por_ind):
+                        cnt = 0
                         for n in range(permutation.shape[0]):
                             if n % 2 == 0:
                                 next_generacion[i][k][cnt:permutation[n]] = generacion[progenitores[0]][k][cnt:permutation[n]]
@@ -516,7 +518,7 @@ class AlgoritmoGenetico(Clasificador):
             if p_mutacion > 0:
                 for i in range(next_generacion.shape[0]):
                     for k in range(reglas_por_ind):
-                        for bit in range(next_generacion.shape[1]):
+                        for bit in range(next_generacion.shape[2]):
                             if np.random.random() < p_mutacion:
                                 next_generacion[i][k][bit] = (next_generacion[i][k][bit] + 1)%2
 
@@ -529,18 +531,27 @@ class AlgoritmoGenetico(Clasificador):
 
             generacion = next_generacion
 
-        self.ultimo_individuo = generacion[0]
+        fitness = np.empty(generacion.shape[0])
+        for i in range(fitness.shape[0]):
+            fitness[i] = self.get_aciertos(base_reglas, generacion[i],
+                                           diccionario)
 
-        self.ultimo_fitness = np.empty(self.ultima_generacion.shape[0])
-        for i in range(self.ultimo_fitness.shape[0]):
-            self.ultimo_fitness[i] = self.get_aciertos(base_reglas, self.ultima_generacion[i], diccionario)
+        fitness_medio = np.mean(fitness)
+        fitness_max = max(fitness)
+        print("Generacion:", n_epocas)
+        print("Fitness medio:", fitness_medio)
+        print("Fitness mejor individuo:", fitness_max)
+        print('###################################################')
+
+        ind = np.argpartition(fitness, -1)[-1:]
+        self.ultimo_individuo = generacion[ind[0]]
 
 
     def obtener_clase(self, dato, n_valores, n_atributos):
-        cnt = 0
-        votos = np.zeros(2, dtype=int)
 
+        votos = np.zeros(2, dtype=int)
         for i in range(self.ultimo_individuo.shape[0]):
+            cnt = 0
             cumple_regla = True
             for j in range(n_atributos-1):
                 next_cnt = cnt + n_valores[j]
@@ -554,8 +565,13 @@ class AlgoritmoGenetico(Clasificador):
 
             if cumple_regla:
                 votos[self.ultimo_individuo[i][-1]] += 1
+            else:
+                votos[(self.ultimo_individuo[i][-1]+1)%2] += 1
 
-        return np.where(votos == max(votos))
+        if votos[0] > votos[1]:
+            return 0
+        else:
+            return 1
 
 
     def clasifica(self, datosTest, atributosDiscretos, diccionario):
